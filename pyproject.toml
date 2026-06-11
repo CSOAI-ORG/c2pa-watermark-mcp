@@ -1,0 +1,19 @@
+[project]
+name = "c2pa-watermark-mcp"
+version = "0.1.0"
+description = "C2PA Content Credentials MCP server for EU AI Act Article 50 compliance."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+c2pa = ["c2pa-python>=0.9.0"]
+dev = ["pytest>=7.0"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["c2pa_watermark_mcp*"]
