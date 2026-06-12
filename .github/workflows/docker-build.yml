@@ -1,0 +1,21 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t c2pa-watermark-mcp:latest .
+      - name: Test image
+        run: |
+          docker run --rm -d --name c2pa-test -p 8000:8000 c2pa-watermark-mcp:latest
+          sleep 5
+          docker exec c2pa-test python -c "import urllib.request; assert urllib.request.urlopen('http://localhost:8000/status', timeout=3).status == 200"
+          docker stop c2pa-test

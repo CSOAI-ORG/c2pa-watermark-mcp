@@ -1,0 +1,3 @@
+# Runtime deps — c2pa-watermark-mcp is pure stdlib, no runtime deps.
+# The [c2pa] extra installs c2pa-python for the full X.509 chain.
+c2pa-python>=0.9.0; extra == "c2pa"

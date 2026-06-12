@@ -20,25 +20,41 @@ generation time and verify provenance at runtime. A pure-stdlib HMAC
 fallback is included for environments where c2pa-python's native deps
 won't install (Vercel serverless, CI sandboxes, etc.).
 
+## Features
+
+- **3 MCP tools** — `sign_asset`, `verify_asset`, `status`
+- **EU AI Act Article 50 ready** — auto-injects `c2pa.ai_generated` assertion
+- **Pure-stdlib fallback** — works without c2pa-python's native deps
+- **HMAC-SHA256 signatures** — tamper-evident manifests
+- **Optional X.509 chain** — via `c2pa-python[evm]` extra
+- **Vercel-deployable** — see `c2pa-watermark-vercel` sibling repo
+
 ## Tools
 
-| Tool | Purpose |
-|------|---------|
-| `sign_asset` | Embed a C2PA manifest into an asset, HMAC-signed |
-| `verify_asset` | Verify a manifest against its asset bytes |
-| `status` | Report server health + native SDK availability |
+| Tool | Purpose | Tier |
+|------|---------|------|
+| `sign_asset` | Embed a C2PA manifest into an asset, HMAC-signed | Pro |
+| `verify_asset` | Verify a manifest against its asset bytes | Free |
+| `status` | Report server health + native SDK availability | Free |
 
-## Install
+## install
 
 ```bash
-# Core (HMAC fallback)
+# Core (HMAC fallback, no native deps)
 pip install c2pa-watermark-mcp
 
-# For full X.509 C2PA chain
-pip install c2pa-python>=0.9.0
+# With full c2pa-python (X.509 chain)
+pip install 'c2pa-watermark-mcp[c2pa]'
+
+# For local development
+git clone https://github.com/CSOAI-ORG/c2pa-watermark-mcp
+cd c2pa-watermark-mcp
+pip install -e .[dev]
 ```
 
-## Usage
+## usage
+
+### Sign an asset (Pro tier)
 
 ```python
 from c2pa_watermark_mcp import sign_asset, verify_asset, status
@@ -68,16 +84,81 @@ verdict = verify_asset(asset, result["manifest"], key)
 print(verdict)  # {'valid': True, 'reasons': [], ...}
 ```
 
-## MCP Server
+### Run as MCP server (stdio)
 
 ```bash
-# stdio
 c2pa-watermark-mcp
-
-# With full c2pa-python
+# or with full c2pa-python
 pip install 'c2pa-watermark-mcp[c2pa]'
 c2pa-watermark-mcp
 ```
+
+### Run via Docker
+
+```bash
+docker build -t c2pa-watermark-mcp .
+docker compose up -d
+# status endpoint on http://localhost:8000
+```
+
+## Deployment to Vercel
+
+See the companion repo [c2pa-watermark-vercel](https://github.com/CSOAI-ORG/c2pa-watermark-vercel)
+for a serverless wrapper exposing `/sign`, `/verify`, `/status` routes.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                c2pa-watermark-mcp                            │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ sign_asset  │  │verify_asset │  │   status    │         │
+│  │  (HMAC +    │  │  (HMAC +    │  │ (health +   │         │
+│  │   c2pa.io)  │  │   tamper)   │  │  capability)│         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│         │                │                │                  │
+│         └────────────────┴────────────────┘                  │
+│                          │                                   │
+│                   ┌──────┴──────┐                           │
+│                   │ HMAC-SHA256 │  (always available)       │
+│                   │ + c2pa.io  │   (if c2pa-python installed)│
+│                   └──────┬──────┘                           │
+│                          │                                   │
+│  ┌─────────────┐  ┌──────┴──────┐  ┌─────────────┐         │
+│  │  manifest   │  │  signing   │  │  AI-Act     │         │
+│  │  generator  │  │   keys     │  │ assertions  │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Why we auto-inject `c2pa.ai_generated`
+
+The C2PA spec defines this as the standard way to disclose AI-generated
+content. EU AI Act Article 50 says AI content must be "machine-readable
+and detectable as AI-generated" — the spec's answer is exactly this
+assertion. Skipping the auto-inject would be a compliance violation waiting
+to happen.
+
+## FAQ
+
+**Q: Does this need c2pa-python?**
+A: No. The pure-stdlib HMAC-SHA256 fallback is fully functional for
+tamper-evident manifests. Install c2pa-python only if you need the full
+X.509 chain.
+
+**Q: Can I sign an asset that's not a PNG/JPEG?**
+A: Yes. The `asset_mime` parameter is just metadata; the HMAC is over
+the bytes themselves. Works for video, audio, PDFs, etc.
+
+**Q: How do I rotate the signing key?**
+A: Generate a new key, deploy with both `OLD_KEY` and `NEW_KEY`, re-sign
+all manifests with `NEW_KEY`, then drop `OLD_KEY` after expiry. This
+package supports key rotation via the `signing_key` constructor arg.
+
+**Q: Is this production-ready?**
+A: Yes for tamper-evidence (HMAC). For full X.509 C2PA chain + cryptographic
+non-repudiation, install c2pa-python ≥ 0.9.0.
 
 ## License
 

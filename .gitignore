@@ -1,6 +1,10 @@
-build/
-dist/
-*.egg-info/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
 .venv/
+venv/
